@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог банок — личная коллекция энергетиков</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230E6B5B'/%3E%3Crect x='11.5' y='7' width='9' height='18' rx='3' fill='white'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <rect x="8" y="4.8" width="8" height="14.4" rx="2.6" />
+          <path d="M8 7.6h8" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">Каталог банок</h1>
+        <p class="page-sub" id="collectionSub"></p>
+      </div>
+    </div>
+  </header>
+
+  <section class="toolbar">
+    <form class="container toolbar-row" id="filters" autocomplete="off">
+      <label class="search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input id="searchInput" type="search" placeholder="Поиск: бренд, вкус, страна…" aria-label="Поиск по коллекции" />
+      </label>
+      <select class="select" id="filterBrand" aria-label="Фильтр по бренду">
+        <option value="">Все бренды</option>
+      </select>
+      <select class="select" id="filterCountry" aria-label="Фильтр по стране">
+        <option value="">Все страны</option>
+      </select>
+      <select class="select" id="filterFlavor" aria-label="Фильтр по вкусу">
+        <option value="">Все вкусы</option>
+      </select>
+      <select class="select" id="sortBy" aria-label="Сортировка">
+        <option value="number-asc">По номеру (сначала старые)</option>
+        <option value="number-desc">По номеру (сначала новые)</option>
+        <option value="rating-desc">По рейтингу</option>
+        <option value="brand-asc">По бренду А–Я</option>
+      </select>
+    </form>
+  </section>
+
+  <main class="gallery">
+    <div class="container">
+      <section class="grid" id="grid" aria-label="Банки коллекции"></section>
+      <div class="empty" id="emptyState" hidden>
+        <h2>Ничего не найдено</h2>
+        <p>Попробуйте изменить запрос или сбросить фильтры.</p>
+        <button class="link-btn" id="resetFilters" type="button">Сбросить фильтры</button>
+      </div>
+      <footer class="footer">
+        Данные — в файле <code>data.js</code>, фото складываются в папку <code>images/</code>.
+      </footer>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+
+  <aside class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+    <button class="panel-close" id="panelClose" aria-label="Закрыть карточку">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+    <div class="panel-media" id="panelMedia"></div>
+    <div class="panel-body">
+      <header>
+        <p class="panel-number" id="panelNumber"></p>
+        <p class="panel-eyebrow" id="panelBrand"></p>
+        <h2 class="panel-title" id="panelTitle"></h2>
+      </header>
+      <dl class="meta">
+        <div class="meta-row"><dt>Страна</dt><dd id="metaCountry"></dd></div>
+        <div class="meta-row"><dt>Дата пробы</dt><dd id="metaDate"></dd></div>
+        <div class="meta-row"><dt>Объём</dt><dd id="metaVolume"></dd></div>
+      </dl>
+      <section>
+        <h3 class="label">Оценка</h3>
+        <div class="stars" id="panelStars" aria-label="Оценка банки от 1 до 5"></div>
+        <button class="link-btn clear-btn" id="clearRating" type="button" hidden>Сбросить оценку</button>
+      </section>
+      <section>
+        <h3 class="label">Заметки</h3>
+        <p class="notes" id="panelNotes"></p>
+      </section>
+    </div>
+  </aside>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
