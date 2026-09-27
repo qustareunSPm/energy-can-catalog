@@ -6,7 +6,6 @@
     form: document.getElementById('filters'),
     search: document.getElementById('searchInput'),
     brand: document.getElementById('filterBrand'),
-    country: document.getElementById('filterCountry'),
     flavor: document.getElementById('filterFlavor'),
     sort: document.getElementById('sortBy'),
     grid: document.getElementById('grid'),
@@ -59,13 +58,13 @@
     authToggle: document.getElementById('authToggle'),
     appShell: document.getElementById('appShell'),
     userChip: document.getElementById('userChip'),
-    logoutBtn: document.getElementById('logoutBtn')
+    logoutBtn: document.getElementById('logoutBtn'),
+    themeBtn: document.getElementById('themeBtn')
   };
 
   var state = {
     search: '',
     brand: '',
-    country: '',
     flavor: '',
     sort: 'number-asc'
   };
@@ -79,6 +78,26 @@
 
   var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
   var X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var THEME_KEY = 'can-catalog:theme';
+  var SUN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+  var MOON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (e) {}
+    els.themeBtn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
+    els.themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Светлая тема' : 'Тёмная тема');
+  }
 
   async function api(method, url, body) {
     var opts = { method: method, headers: {} };
@@ -195,10 +214,9 @@
 
   function populateFilters() {
     var brands = uniqueSorted(cans.map(function (c) { return c.brand; }));
-    var countries = uniqueSorted(cans.map(function (c) { return c.country; }));
     var flavors = uniqueSorted(cans.map(function (c) { return c.flavor; }));
+    var countries = uniqueSorted(cans.map(function (c) { return c.country; }));
     fillSelect(els.brand, brands, 'Все бренды');
-    fillSelect(els.country, countries, 'Все страны');
     fillSelect(els.flavor, flavors, 'Все вкусы');
     fillDatalist(els.brandList, brands);
     fillDatalist(els.countryList, countries);
@@ -219,7 +237,6 @@
     var q = state.search.trim().toLowerCase();
     var list = cans.filter(function (c) {
       if (state.brand && c.brand !== state.brand) return false;
-      if (state.country && c.country !== state.country) return false;
       if (state.flavor && c.flavor !== state.flavor) return false;
       if (!q) return true;
       var hay = [c.brand, c.flavor, c.country, c.notes, c.number].join(' ').toLowerCase();
@@ -560,11 +577,6 @@
     renderGrid(false);
   });
 
-  els.country.addEventListener('change', function () {
-    state.country = els.country.value;
-    renderGrid(false);
-  });
-
   els.flavor.addEventListener('change', function () {
     state.flavor = els.flavor.value;
     renderGrid(false);
@@ -578,7 +590,6 @@
   els.reset.addEventListener('click', function () {
     state.search = '';
     state.brand = '';
-    state.country = '';
     state.flavor = '';
     state.sort = 'number-asc';
     els.form.reset();
@@ -794,6 +805,10 @@
     showAuth();
   });
 
+  els.themeBtn.addEventListener('click', function () {
+    applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+  });
+
   async function init() {
     try {
       var me = await api('GET', '/api/me');
@@ -807,6 +822,8 @@
       }
     }
   }
+
+  applyTheme(currentTheme());
 
   init();
 })();
