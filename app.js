@@ -1,8 +1,14 @@
 (function () {
   'use strict';
 
-  var CANS = window.CAN_COLLECTION || [];
+  var baseCans = window.CAN_COLLECTION || [];
+  var userCans = [];
   var STORAGE_KEY = 'can-catalog:ratings:v1';
+  var DB_NAME = 'can-catalog';
+  var DB_STORE = 'cans';
+  var HIDDEN_KEY = 'can-catalog:hidden:v1';
+  var PHOTO_MAX_SIDE = 1600;
+  var PHOTO_KEEP_SIZE = 1.5 * 1024 * 1024;
 
   var els = {
     sub: document.getElementById('collectionSub'),
@@ -27,7 +33,29 @@
     metaVolume: document.getElementById('metaVolume'),
     stars: document.getElementById('panelStars'),
     clearRating: document.getElementById('clearRating'),
-    panelNotes: document.getElementById('panelNotes')
+    panelNotes: document.getElementById('panelNotes'),
+    deleteCan: document.getElementById('deleteCan'),
+    addCanBtn: document.getElementById('addCanBtn'),
+    formPanel: document.getElementById('formPanel'),
+    formClose: document.getElementById('formClose'),
+    addForm: document.getElementById('addForm'),
+    dropzone: document.getElementById('dropzone'),
+    photoInput: document.getElementById('photoInput'),
+    photoPreview: document.getElementById('photoPreview'),
+    dzEmpty: document.getElementById('dzEmpty'),
+    photoRemove: document.getElementById('photoRemove'),
+    colorField: document.getElementById('colorField'),
+    colorInput: document.getElementById('colorInput'),
+    fNumber: document.getElementById('fNumber'),
+    fBrand: document.getElementById('fBrand'),
+    fFlavor: document.getElementById('fFlavor'),
+    fCountry: document.getElementById('fCountry'),
+    fVolume: document.getElementById('fVolume'),
+    fDate: document.getElementById('fDate'),
+    fNotes: document.getElementById('fNotes'),
+    brandList: document.getElementById('brandList'),
+    countryList: document.getElementById('countryList'),
+    formError: document.getElementById('formError')
   };
 
   var state = {
@@ -36,13 +64,18 @@
     country: '',
     flavor: '',
     sort: 'number-asc',
-    ratings: loadRatings()
+    ratings: loadRatings(),
+    hiddenIds: loadHidden()
   };
 
+  var db = null;
+  var pendingPhoto = null;
   var currentCan = null;
   var lastFocused = null;
+  var openPanelEl = null;
 
   var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
+  var X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
   function loadRatings() {
     try {
@@ -61,6 +94,21 @@
   function saveRatings() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.ratings));
+    } catch (e) {}
+  }
+
+  function loadHidden() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
+      return Array.isArray(raw) ? raw.filter(function (v) { return typeof v === 'string'; }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHidden() {
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(state.hiddenIds));
     } catch (e) {}
   }
 
@@ -127,6 +175,9 @@
   }
 
   function mediaHtml(can) {
+    if (can.imageUrl) {
+      return '<img src="' + can.imageUrl + '" alt="' + esc(can.brand + ' ' + can.flavor) + '">';
+    }
     if (can.image) {
       return '<img src="' + esc(can.image) + '" alt="' + esc(can.brand + ' ' + can.flavor) + '" loading="lazy"' +
         ' onerror="this.onerror=null;this.parentElement.innerHTML=window.__canFallback(\'' + esc(can.id) + '\')">';
@@ -139,8 +190,14 @@
     return can ? placeholderSvg(can) : '';
   };
 
+  function allCans() {
+    return baseCans
+      .filter(function (c) { return state.hiddenIds.indexOf(c.id) === -1; })
+      .concat(userCans);
+  }
+
   function byId(id) {
-    return CANS.find(function (c) { return c.id === id; });
+    return allCans().find(function (c) { return c.id === id; });
   }
 
   function uniqueSorted(arr) {
@@ -157,10 +214,21 @@
     if (values.indexOf(current) !== -1) sel.value = current;
   }
 
+  function fillDatalist(sel, values) {
+    sel.innerHTML = values.map(function (v) {
+      return '<option value="' + esc(v) + '"></option>';
+    }).join('');
+  }
+
   function populateFilters() {
-    fillSelect(els.brand, uniqueSorted(CANS.map(function (c) { return c.brand; })), 'Все бренды');
-    fillSelect(els.country, uniqueSorted(CANS.map(function (c) { return c.country; })), 'Все страны');
-    fillSelect(els.flavor, uniqueSorted(CANS.map(function (c) { return c.flavor; })), 'Все вкусы');
+    var brands = uniqueSorted(allCans().map(function (c) { return c.brand; }));
+    var countries = uniqueSorted(allCans().map(function (c) { return c.country; }));
+    var flavors = uniqueSorted(allCans().map(function (c) { return c.flavor; }));
+    fillSelect(els.brand, brands, 'Все бренды');
+    fillSelect(els.country, countries, 'Все страны');
+    fillSelect(els.flavor, flavors, 'Все вкусы');
+    fillDatalist(els.brandList, brands);
+    fillDatalist(els.countryList, countries);
   }
 
   var SORTERS = {
@@ -176,7 +244,7 @@
 
   function getFiltered() {
     var q = state.search.trim().toLowerCase();
-    var list = CANS.filter(function (c) {
+    var list = allCans().filter(function (c) {
       if (state.brand && c.brand !== state.brand) return false;
       if (state.country && c.country !== state.country) return false;
       if (state.flavor && c.flavor !== state.flavor) return false;
@@ -202,6 +270,7 @@
       (withAppear ? ' style="--i:' + i + '"' : '') +
       ' data-id="' + esc(can.id) + '" tabindex="0" role="button"' +
       ' aria-label="' + esc(can.brand + ' ' + can.flavor + '. Открыть карточку') + '">' +
+      '<button class="card-remove" type="button" aria-label="Удалить банку ' + esc(can.brand + ' ' + can.flavor) + '">' + X_SVG + '</button>' +
       '<div class="card-media">' + mediaHtml(can) + '</div>' +
       '<div class="card-body">' +
       '<div class="card-row"><span class="card-number">' + pad(can.number) + '</span>' + miniStars(state.ratings[can.id]) + '</div>' +
@@ -212,7 +281,7 @@
   }
 
   function updateSub(shown) {
-    var total = CANS.length;
+    var total = allCans().length;
     if (shown === total) {
       els.sub.textContent = total + ' ' + plural(total, ['банка', 'банки', 'банок']) + ' в коллекции';
     } else {
@@ -228,6 +297,61 @@
     els.grid.hidden = list.length === 0;
     els.empty.hidden = list.length > 0;
     updateSub(list.length);
+  }
+
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('IndexedDB is not available'));
+        return;
+      }
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore(DB_STORE, { keyPath: 'id' });
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function dbGetAll(database) {
+    return new Promise(function (resolve, reject) {
+      var req = database.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+      req.onsuccess = function () { resolve(req.result || []); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function dbPut(database, record) {
+    return new Promise(function (resolve, reject) {
+      var req = database.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(record);
+      req.onsuccess = function () { resolve(); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function dbDelete(database, id) {
+    return new Promise(function (resolve, reject) {
+      var req = database.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).delete(id);
+      req.onsuccess = function () { resolve(); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function loadUserCans() {
+    return openDb().then(function (database) {
+      db = database;
+      return dbGetAll(database);
+    }).then(function (records) {
+      userCans = (records || []).map(function (rec) {
+        var can = Object.assign({}, rec);
+        can.isUser = true;
+        if (can.photo) {
+          try { can.imageUrl = URL.createObjectURL(can.photo); } catch (e) {}
+        }
+        return can;
+      });
+    });
   }
 
   function paintStars(container, value, cls) {
@@ -250,9 +374,13 @@
     paintStars(els.stars, current, 'on');
   }
 
-  function openPanel(can) {
+  function openDetail(can) {
+    if (openPanelEl && openPanelEl !== els.panel) closePanelEl(openPanelEl, false);
     currentCan = can;
-    lastFocused = document.activeElement;
+    if (openPanelEl !== els.panel) {
+      lastFocused = document.activeElement;
+      openPanelEl = els.panel;
+    }
 
     els.panelMedia.innerHTML = mediaHtml(can);
     els.panelNumber.textContent = pad(can.number);
@@ -265,6 +393,7 @@
     var rating = state.ratings[can.id] || 0;
     renderStars(rating);
     els.clearRating.hidden = !rating;
+    els.deleteCan.hidden = false;
 
     if (can.notes) {
       els.panelNotes.textContent = can.notes;
@@ -281,13 +410,135 @@
     els.panelClose.focus();
   }
 
-  function closePanel() {
-    currentCan = null;
-    els.overlay.classList.remove('show');
-    els.panel.classList.remove('open');
-    document.body.classList.remove('no-scroll');
-    if (lastFocused && document.contains(lastFocused)) lastFocused.focus();
-    lastFocused = null;
+  function closePanelEl(panel, restoreFocus) {
+    panel.classList.remove('open');
+    if (panel === els.panel) currentCan = null;
+    if (openPanelEl === panel) openPanelEl = null;
+    if (!els.panel.classList.contains('open') && !els.formPanel.classList.contains('open')) {
+      els.overlay.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+    }
+    if (restoreFocus && lastFocused && document.contains(lastFocused)) lastFocused.focus();
+    if (restoreFocus) lastFocused = null;
+  }
+
+  function closeAllPanels() {
+    if (openPanelEl) closePanelEl(openPanelEl, true);
+    else {
+      els.panel.classList.remove('open');
+      els.formPanel.classList.remove('open');
+      els.overlay.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+    }
+  }
+
+  function nextNumber() {
+    return allCans().reduce(function (m, c) {
+      return Math.max(m, Number(c.number) || 0);
+    }, 0) + 1;
+  }
+
+  function showFormError(msg) {
+    els.formError.textContent = msg;
+    els.formError.hidden = false;
+  }
+
+  function hideFormError() {
+    els.formError.hidden = true;
+  }
+
+  function clearPendingPhoto() {
+    if (pendingPhoto) {
+      URL.revokeObjectURL(pendingPhoto.url);
+      pendingPhoto = null;
+    }
+  }
+
+  function resetPhotoUi() {
+    els.photoPreview.hidden = true;
+    els.photoPreview.removeAttribute('src');
+    els.dzEmpty.hidden = false;
+    els.photoRemove.hidden = true;
+    els.colorField.hidden = false;
+  }
+
+  function resetForm() {
+    clearPendingPhoto();
+    els.addForm.reset();
+    els.colorInput.value = '#0E6B5B';
+    resetPhotoUi();
+    hideFormError();
+    [els.fBrand, els.fFlavor, els.fCountry].forEach(function (inp) {
+      inp.classList.remove('invalid');
+    });
+  }
+
+  function processPhoto(file) {
+    return new Promise(function (resolve) {
+      if (!file || !/^image\//.test(file.type)) {
+        resolve(null);
+        return;
+      }
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth;
+        var h = img.naturalHeight;
+        if (w <= PHOTO_MAX_SIDE && h <= PHOTO_MAX_SIDE && file.size <= PHOTO_KEEP_SIZE) {
+          resolve(file);
+          return;
+        }
+        var scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(w, h));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function (blob) {
+          resolve(blob || file);
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  function setPhoto(file) {
+    if (!file) return;
+    hideFormError();
+    processPhoto(file).then(function (blob) {
+      if (!blob) {
+        showFormError('Не удалось прочитать изображение. Попробуй другой файл.');
+        return;
+      }
+      clearPendingPhoto();
+      pendingPhoto = { blob: blob, url: URL.createObjectURL(blob) };
+      els.photoPreview.src = pendingPhoto.url;
+      els.photoPreview.hidden = false;
+      els.dzEmpty.hidden = true;
+      els.photoRemove.hidden = false;
+      els.colorField.hidden = true;
+    });
+  }
+
+  function openForm() {
+    if (openPanelEl && openPanelEl !== els.formPanel) closePanelEl(openPanelEl, false);
+    if (openPanelEl !== els.formPanel) {
+      lastFocused = document.activeElement;
+      openPanelEl = els.formPanel;
+    }
+    els.fNumber.value = String(nextNumber());
+    els.overlay.classList.add('show');
+    els.formPanel.classList.add('open');
+    document.body.classList.add('no-scroll');
+    els.formPanel.scrollTop = 0;
+    els.fBrand.focus();
   }
 
   function setRating(can, value) {
@@ -297,6 +548,34 @@
     paintStars(els.stars, value, 'on');
     els.clearRating.hidden = false;
     renderGrid(false);
+  }
+
+  function removeCan(can) {
+    var label = can.brand + ' ' + can.flavor;
+    if (!window.confirm('Удалить банку «' + label + '» из коллекции?')) return;
+
+    var finish = function () {
+      if (can.imageUrl) URL.revokeObjectURL(can.imageUrl);
+      if (state.ratings[can.id]) {
+        delete state.ratings[can.id];
+        saveRatings();
+      }
+      if (can.isUser) {
+        userCans = userCans.filter(function (c) { return c.id !== can.id; });
+      } else {
+        state.hiddenIds.push(can.id);
+        saveHidden();
+      }
+      closeAllPanels();
+      populateFilters();
+      renderGrid(false);
+    };
+
+    if (can.isUser && db) {
+      dbDelete(db, can.id).then(finish, finish);
+    } else {
+      finish();
+    }
   }
 
   els.form.addEventListener('submit', function (e) { e.preventDefault(); });
@@ -337,19 +616,27 @@
   });
 
   els.grid.addEventListener('click', function (e) {
-    var card = e.target.closest('.card');
-    if (!card) return;
-    var can = byId(card.dataset.id);
-    if (can) openPanel(can);
+    var removeBtn = e.target.closest('.card-remove');
+    if (removeBtn) {
+      var card = removeBtn.closest('.card');
+      var target = card && byId(card.dataset.id);
+      if (target) removeCan(target);
+      return;
+    }
+    var cardEl = e.target.closest('.card');
+    if (!cardEl) return;
+    var can = byId(cardEl.dataset.id);
+    if (can) openDetail(can);
   });
 
   els.grid.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('.card-remove')) return;
     var card = e.target.closest('.card');
     if (!card) return;
     e.preventDefault();
     var can = byId(card.dataset.id);
-    if (can) openPanel(can);
+    if (can) openDetail(can);
   });
 
   els.stars.addEventListener('click', function (e) {
@@ -381,30 +668,149 @@
     renderGrid(false);
   });
 
-  els.panelClose.addEventListener('click', closePanel);
-  els.overlay.addEventListener('click', closePanel);
+  els.panelClose.addEventListener('click', function () { closeAllPanels(); });
+  els.formClose.addEventListener('click', function () { closeAllPanels(); });
+  els.overlay.addEventListener('click', function () { closeAllPanels(); });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && els.panel.classList.contains('open')) closePanel();
+    if (e.key === 'Escape' && openPanelEl) closeAllPanels();
   });
 
-  els.panel.addEventListener('keydown', function (e) {
-    if (e.key !== 'Tab') return;
-    var focusables = els.panel.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    if (!focusables.length) return;
-    var first = focusables[0];
-    var last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
+  Array.prototype.forEach.call(document.querySelectorAll('.panel'), function (p) {
+    p.addEventListener('keydown', function (e) {
+      if (e.key !== 'Tab') return;
+      var focusables = Array.prototype.filter.call(
+        p.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+        function (el) { return el.offsetParent !== null; }
+      );
+      if (!focusables.length) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+  });
+
+  els.addCanBtn.addEventListener('click', openForm);
+
+  els.dropzone.addEventListener('click', function () {
+    els.photoInput.click();
+  });
+
+  els.dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
+      els.photoInput.click();
     }
   });
 
-  populateFilters();
-  renderGrid(true);
+  els.photoInput.addEventListener('change', function () {
+    var file = els.photoInput.files && els.photoInput.files[0];
+    setPhoto(file);
+    els.photoInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function (type) {
+    els.dropzone.addEventListener(type, function (e) {
+      e.preventDefault();
+      els.dropzone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(function (type) {
+    els.dropzone.addEventListener(type, function (e) {
+      e.preventDefault();
+      els.dropzone.classList.remove('dragover');
+    });
+  });
+
+  els.dropzone.addEventListener('drop', function (e) {
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    setPhoto(file);
+  });
+
+  els.photoRemove.addEventListener('click', function (e) {
+    e.stopPropagation();
+    clearPendingPhoto();
+    resetPhotoUi();
+  });
+
+  [els.fBrand, els.fFlavor, els.fCountry].forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      inp.classList.remove('invalid');
+      hideFormError();
+    });
+  });
+
+  els.addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    hideFormError();
+
+    var missing = [els.fBrand, els.fFlavor, els.fCountry].filter(function (inp) {
+      var ok = inp.value.trim().length > 0;
+      inp.classList.toggle('invalid', !ok);
+      return !ok;
+    });
+
+    if (missing.length) {
+      showFormError('Заполните обязательные поля: бренд, вкус и страна.');
+      missing[0].focus();
+      return;
+    }
+
+    var number = parseInt(els.fNumber.value, 10);
+    if (!number || number < 1) number = nextNumber();
+
+    var record = {
+      id: 'user-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      number: number,
+      brand: els.fBrand.value.trim(),
+      flavor: els.fFlavor.value.trim(),
+      country: els.fCountry.value.trim(),
+      volume: els.fVolume.value.trim() || null,
+      date: els.fDate.value || null,
+      notes: els.fNotes.value.trim() || null,
+      color: els.colorInput.value || '#7C8B99',
+      photo: pendingPhoto ? pendingPhoto.blob : null,
+      createdAt: Date.now(),
+      isUser: true
+    };
+
+    var apply = function () {
+      var can = Object.assign({}, record);
+      if (record.photo) {
+        try { can.imageUrl = URL.createObjectURL(record.photo); } catch (e) {}
+      }
+      userCans.push(can);
+      resetForm();
+      closeAllPanels();
+      populateFilters();
+      renderGrid(false);
+    };
+
+    if (db) {
+      dbPut(db, record).then(apply, function () {
+        showFormError('Не удалось сохранить банку: хранилище браузера недоступно.');
+      });
+    } else {
+      showFormError('Не удалось сохранить банку: хранилище браузера недоступно.');
+    }
+  });
+
+  els.deleteCan.addEventListener('click', function () {
+    if (!currentCan) return;
+    removeCan(currentCan);
+  });
+
+  function init() {
+    populateFilters();
+    renderGrid(true);
+  }
+
+  loadUserCans().then(init, init);
 })();

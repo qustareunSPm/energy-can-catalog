@@ -23,6 +23,12 @@
         <h1 class="page-title">Каталог банок</h1>
         <p class="page-sub" id="collectionSub"></p>
       </div>
+      <button class="btn-primary add-btn" id="addCanBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Добавить банку
+      </button>
     </div>
   </header>
 
@@ -96,6 +102,74 @@
         <h3 class="label">Заметки</h3>
         <p class="notes" id="panelNotes"></p>
       </section>
+      <section>
+        <button class="link-btn danger" id="deleteCan" type="button" hidden>Удалить банку из коллекции</button>
+      </section>
+    </div>
+  </aside>
+
+  <aside class="panel form-panel" id="formPanel" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <button class="panel-close" id="formClose" aria-label="Закрыть форму">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+    <div class="form-body">
+      <header>
+        <p class="panel-number">Новая банка</p>
+        <h2 class="panel-title" id="formTitle">Добавить в коллекцию</h2>
+      </header>
+      <form id="addForm" novalidate>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Выбрать фото банки">
+          <img id="photoPreview" alt="Предпросмотр фото" hidden />
+          <div class="dz-empty" id="dzEmpty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4m0 0 4 4m-4-4L8 8" />
+              <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+            </svg>
+            <p>Перетащи фото сюда<br />или нажми, чтобы выбрать файл</p>
+          </div>
+          <button type="button" class="dz-remove" id="photoRemove" hidden>Убрать фото</button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" hidden />
+
+        <div class="field" id="colorField">
+          <label class="label" for="colorInput">Цвет банки-заглушки</label>
+          <input type="color" id="colorInput" value="#0E6B5B" />
+        </div>
+        <div class="field">
+          <label class="label" for="fNumber">Каталожный номер</label>
+          <input type="number" id="fNumber" min="1" step="1" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label class="label" for="fBrand">Бренд *</label>
+          <input type="text" id="fBrand" list="brandList" maxlength="60" />
+          <datalist id="brandList"></datalist>
+        </div>
+        <div class="field">
+          <label class="label" for="fFlavor">Вкус *</label>
+          <input type="text" id="fFlavor" maxlength="80" />
+        </div>
+        <div class="field">
+          <label class="label" for="fCountry">Страна *</label>
+          <input type="text" id="fCountry" list="countryList" maxlength="60" />
+          <datalist id="countryList"></datalist>
+        </div>
+        <div class="field">
+          <label class="label" for="fVolume">Объём</label>
+          <input type="text" id="fVolume" maxlength="30" placeholder="500 мл" />
+        </div>
+        <div class="field">
+          <label class="label" for="fDate">Дата пробы</label>
+          <input type="date" id="fDate" />
+        </div>
+        <div class="field">
+          <label class="label" for="fNotes">Заметки</label>
+          <textarea id="fNotes" rows="4" maxlength="2000"></textarea>
+        </div>
+        <p class="form-error" id="formError" hidden></p>
+        <button type="submit" class="btn-primary" id="saveBtn">Добавить банку</button>
+      </form>
     </div>
   </aside>
 
