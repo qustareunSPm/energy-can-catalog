@@ -1,15 +1,6 @@
 (function () {
   'use strict';
 
-  var baseCans = window.CAN_COLLECTION || [];
-  var userCans = [];
-  var STORAGE_KEY = 'can-catalog:ratings:v1';
-  var DB_NAME = 'can-catalog';
-  var DB_STORE = 'cans';
-  var HIDDEN_KEY = 'can-catalog:hidden:v1';
-  var PHOTO_MAX_SIDE = 1600;
-  var PHOTO_KEEP_SIZE = 1.5 * 1024 * 1024;
-
   var els = {
     sub: document.getElementById('collectionSub'),
     form: document.getElementById('filters'),
@@ -55,7 +46,19 @@
     fNotes: document.getElementById('fNotes'),
     brandList: document.getElementById('brandList'),
     countryList: document.getElementById('countryList'),
-    formError: document.getElementById('formError')
+    formError: document.getElementById('formError'),
+    authScreen: document.getElementById('authScreen'),
+    authForm: document.getElementById('authForm'),
+    authTitle: document.getElementById('authTitle'),
+    authSub: document.getElementById('authSub'),
+    aUser: document.getElementById('aUser'),
+    aPass: document.getElementById('aPass'),
+    authError: document.getElementById('authError'),
+    authSubmit: document.getElementById('authSubmit'),
+    authToggle: document.getElementById('authToggle'),
+    appShell: document.getElementById('appShell'),
+    userChip: document.getElementById('userChip'),
+    logoutBtn: document.getElementById('logoutBtn')
   };
 
   var state = {
@@ -63,53 +66,41 @@
     brand: '',
     country: '',
     flavor: '',
-    sort: 'number-asc',
-    ratings: loadRatings(),
-    hiddenIds: loadHidden()
+    sort: 'number-asc'
   };
 
-  var db = null;
+  var cans = [];
   var pendingPhoto = null;
   var currentCan = null;
   var lastFocused = null;
   var openPanelEl = null;
+  var authMode = 'login';
 
   var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
   var X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
-  function loadRatings() {
-    try {
-      var raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      var out = {};
-      Object.keys(raw).forEach(function (k) {
-        var v = Number(raw[k]);
-        if (v >= 1 && v <= 5) out[k] = Math.round(v);
-      });
-      return out;
-    } catch (e) {
-      return {};
+  async function api(method, url, body) {
+    var opts = { method: method, headers: {} };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
     }
-  }
-
-  function saveRatings() {
+    var res;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.ratings));
-    } catch (e) {}
-  }
-
-  function loadHidden() {
-    try {
-      var raw = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
-      return Array.isArray(raw) ? raw.filter(function (v) { return typeof v === 'string'; }) : [];
+      res = await fetch(url, opts);
     } catch (e) {
-      return [];
+      var netErr = new Error('Нет связи с сервером');
+      netErr.status = 0;
+      throw netErr;
     }
-  }
-
-  function saveHidden() {
-    try {
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(state.hiddenIds));
-    } catch (e) {}
+    var data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) {
+      var err = new Error(data && data.error ? data.error : 'Ошибка ' + res.status);
+      err.status = res.status;
+      throw err;
+    }
+    return data;
   }
 
   function esc(s) {
@@ -175,29 +166,10 @@
   }
 
   function mediaHtml(can) {
-    if (can.imageUrl) {
-      return '<img src="' + can.imageUrl + '" alt="' + esc(can.brand + ' ' + can.flavor) + '">';
-    }
-    if (can.image) {
-      return '<img src="' + esc(can.image) + '" alt="' + esc(can.brand + ' ' + can.flavor) + '" loading="lazy"' +
-        ' onerror="this.onerror=null;this.parentElement.innerHTML=window.__canFallback(\'' + esc(can.id) + '\')">';
+    if (can.photoUrl) {
+      return '<img src="' + esc(can.photoUrl) + '" alt="' + esc(can.brand + ' ' + can.flavor) + '" loading="lazy">';
     }
     return placeholderSvg(can);
-  }
-
-  window.__canFallback = function (id) {
-    var can = byId(id);
-    return can ? placeholderSvg(can) : '';
-  };
-
-  function allCans() {
-    return baseCans
-      .filter(function (c) { return state.hiddenIds.indexOf(c.id) === -1; })
-      .concat(userCans);
-  }
-
-  function byId(id) {
-    return allCans().find(function (c) { return c.id === id; });
   }
 
   function uniqueSorted(arr) {
@@ -221,9 +193,9 @@
   }
 
   function populateFilters() {
-    var brands = uniqueSorted(allCans().map(function (c) { return c.brand; }));
-    var countries = uniqueSorted(allCans().map(function (c) { return c.country; }));
-    var flavors = uniqueSorted(allCans().map(function (c) { return c.flavor; }));
+    var brands = uniqueSorted(cans.map(function (c) { return c.brand; }));
+    var countries = uniqueSorted(cans.map(function (c) { return c.country; }));
+    var flavors = uniqueSorted(cans.map(function (c) { return c.flavor; }));
     fillSelect(els.brand, brands, 'Все бренды');
     fillSelect(els.country, countries, 'Все страны');
     fillSelect(els.flavor, flavors, 'Все вкусы');
@@ -235,7 +207,7 @@
     'number-asc': function (a, b) { return a.number - b.number; },
     'number-desc': function (a, b) { return b.number - a.number; },
     'rating-desc': function (a, b) {
-      return (state.ratings[b.id] || 0) - (state.ratings[a.id] || 0) || a.number - b.number;
+      return (b.rating || 0) - (a.rating || 0) || a.number - b.number;
     },
     'brand-asc': function (a, b) {
       return a.brand.localeCompare(b.brand, 'ru') || a.number - b.number;
@@ -244,7 +216,7 @@
 
   function getFiltered() {
     var q = state.search.trim().toLowerCase();
-    var list = allCans().filter(function (c) {
+    var list = cans.filter(function (c) {
       if (state.brand && c.brand !== state.brand) return false;
       if (state.country && c.country !== state.country) return false;
       if (state.flavor && c.flavor !== state.flavor) return false;
@@ -273,7 +245,7 @@
       '<button class="card-remove" type="button" aria-label="Удалить банку ' + esc(can.brand + ' ' + can.flavor) + '">' + X_SVG + '</button>' +
       '<div class="card-media">' + mediaHtml(can) + '</div>' +
       '<div class="card-body">' +
-      '<div class="card-row"><span class="card-number">' + pad(can.number) + '</span>' + miniStars(state.ratings[can.id]) + '</div>' +
+      '<div class="card-row"><span class="card-number">' + pad(can.number) + '</span>' + miniStars(can.rating) + '</div>' +
       '<h3 class="card-brand">' + esc(can.brand) + '</h3>' +
       '<p class="card-flavor">' + esc(can.flavor) + '</p>' +
       '<p class="card-country">' + esc(can.country) + '</p>' +
@@ -281,7 +253,7 @@
   }
 
   function updateSub(shown) {
-    var total = allCans().length;
+    var total = cans.length;
     if (shown === total) {
       els.sub.textContent = total + ' ' + plural(total, ['банка', 'банки', 'банок']) + ' в коллекции';
     } else {
@@ -299,59 +271,17 @@
     updateSub(list.length);
   }
 
-  function openDb() {
-    return new Promise(function (resolve, reject) {
-      if (!window.indexedDB) {
-        reject(new Error('IndexedDB is not available'));
-        return;
-      }
-      var req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = function () {
-        req.result.createObjectStore(DB_STORE, { keyPath: 'id' });
-      };
-      req.onsuccess = function () { resolve(req.result); };
-      req.onerror = function () { reject(req.error); };
-    });
+  function nextNumber() {
+    return cans.reduce(function (m, c) {
+      return Math.max(m, Number(c.number) || 0);
+    }, 0) + 1;
   }
 
-  function dbGetAll(database) {
-    return new Promise(function (resolve, reject) {
-      var req = database.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
-      req.onsuccess = function () { resolve(req.result || []); };
-      req.onerror = function () { reject(req.error); };
-    });
-  }
-
-  function dbPut(database, record) {
-    return new Promise(function (resolve, reject) {
-      var req = database.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(record);
-      req.onsuccess = function () { resolve(); };
-      req.onerror = function () { reject(req.error); };
-    });
-  }
-
-  function dbDelete(database, id) {
-    return new Promise(function (resolve, reject) {
-      var req = database.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).delete(id);
-      req.onsuccess = function () { resolve(); };
-      req.onerror = function () { reject(req.error); };
-    });
-  }
-
-  function loadUserCans() {
-    return openDb().then(function (database) {
-      db = database;
-      return dbGetAll(database);
-    }).then(function (records) {
-      userCans = (records || []).map(function (rec) {
-        var can = Object.assign({}, rec);
-        can.isUser = true;
-        if (can.photo) {
-          try { can.imageUrl = URL.createObjectURL(can.photo); } catch (e) {}
-        }
-        return can;
-      });
-    });
+  async function loadCans(withAppear) {
+    var data = await api('GET', '/api/cans');
+    cans = data.cans || [];
+    populateFilters();
+    renderGrid(withAppear);
   }
 
   function paintStars(container, value, cls) {
@@ -390,9 +320,8 @@
     els.metaDate.textContent = formatDate(can.date) || '—';
     els.metaVolume.textContent = can.volume || '—';
 
-    var rating = state.ratings[can.id] || 0;
-    renderStars(rating);
-    els.clearRating.hidden = !rating;
+    renderStars(can.rating || 0);
+    els.clearRating.hidden = !can.rating;
     els.deleteCan.hidden = false;
 
     if (can.notes) {
@@ -432,12 +361,6 @@
     }
   }
 
-  function nextNumber() {
-    return allCans().reduce(function (m, c) {
-      return Math.max(m, Number(c.number) || 0);
-    }, 0) + 1;
-  }
-
   function showFormError(msg) {
     els.formError.textContent = msg;
     els.formError.hidden = false;
@@ -473,6 +396,15 @@
     });
   }
 
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
   function processPhoto(file) {
     return new Promise(function (resolve) {
       if (!file || !/^image\//.test(file.type)) {
@@ -481,25 +413,33 @@
       }
       var url = URL.createObjectURL(file);
       var img = new Image();
-      img.onload = function () {
+      img.onload = async function () {
         URL.revokeObjectURL(url);
         var w = img.naturalWidth;
         var h = img.naturalHeight;
-        if (w <= PHOTO_MAX_SIDE && h <= PHOTO_MAX_SIDE && file.size <= PHOTO_KEEP_SIZE) {
-          resolve(file);
-          return;
+        var keepSize = 1.5 * 1024 * 1024;
+        var blob;
+        if (w <= 1600 && h <= 1600 && file.size <= keepSize) {
+          blob = file;
+        } else {
+          var scale = Math.min(1, 1600 / Math.max(w, h));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(w * scale));
+          canvas.height = Math.max(1, Math.round(h * scale));
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          blob = await new Promise(function (res2) {
+            canvas.toBlob(res2, 'image/jpeg', 0.85);
+          }) || file;
         }
-        var scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(w, h));
-        var canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(w * scale));
-        canvas.height = Math.max(1, Math.round(h * scale));
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob(function (blob) {
-          resolve(blob || file);
-        }, 'image/jpeg', 0.85);
+        try {
+          var dataUrl = await blobToDataUrl(blob);
+          resolve({ blob: blob, url: URL.createObjectURL(blob), dataUrl: dataUrl });
+        } catch (e) {
+          resolve(null);
+        }
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
@@ -512,14 +452,14 @@
   function setPhoto(file) {
     if (!file) return;
     hideFormError();
-    processPhoto(file).then(function (blob) {
-      if (!blob) {
+    processPhoto(file).then(function (photo) {
+      if (!photo) {
         showFormError('Не удалось прочитать изображение. Попробуй другой файл.');
         return;
       }
       clearPendingPhoto();
-      pendingPhoto = { blob: blob, url: URL.createObjectURL(blob) };
-      els.photoPreview.src = pendingPhoto.url;
+      pendingPhoto = photo;
+      els.photoPreview.src = photo.url;
       els.photoPreview.hidden = false;
       els.dzEmpty.hidden = true;
       els.photoRemove.hidden = false;
@@ -541,41 +481,70 @@
     els.fBrand.focus();
   }
 
-  function setRating(can, value) {
-    if (state.ratings[can.id] === value) return;
-    state.ratings[can.id] = value;
-    saveRatings();
-    paintStars(els.stars, value, 'on');
-    els.clearRating.hidden = false;
-    renderGrid(false);
+  function setAuthMode(mode) {
+    authMode = mode;
+    els.authError.hidden = true;
+    if (mode === 'login') {
+      els.authTitle.textContent = 'Вход';
+      els.authSub.textContent = 'Войдите, чтобы открыть свою коллекцию';
+      els.authSubmit.textContent = 'Войти';
+      els.authToggle.textContent = 'Создать аккаунт';
+      els.aPass.setAttribute('autocomplete', 'current-password');
+    } else {
+      els.authTitle.textContent = 'Регистрация';
+      els.authSub.textContent = 'Новый аккаунт получит стартовую коллекцию из 10 банок';
+      els.authSubmit.textContent = 'Создать аккаунт';
+      els.authToggle.textContent = 'У меня есть аккаунт';
+      els.aPass.setAttribute('autocomplete', 'new-password');
+    }
   }
 
-  function removeCan(can) {
+  function showAuth(message) {
+    closeAllPanels();
+    cans = [];
+    els.appShell.hidden = true;
+    els.userChip.hidden = true;
+    els.logoutBtn.hidden = true;
+    els.authScreen.hidden = false;
+    if (message) {
+      els.authError.textContent = message;
+      els.authError.hidden = false;
+    } else {
+      els.authError.hidden = true;
+    }
+    els.aUser.focus();
+  }
+
+  function enterApp(username) {
+    els.authScreen.hidden = true;
+    els.appShell.hidden = false;
+    els.userChip.textContent = '@' + username;
+    els.userChip.hidden = false;
+    els.logoutBtn.hidden = false;
+  }
+
+  async function setRating(can, value) {
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(can.id) + '/rating', { rating: value });
+      can.rating = updated.rating;
+      paintStars(els.stars, value, 'on');
+      els.clearRating.hidden = !value;
+      renderGrid(false);
+    } catch (e) {}
+  }
+
+  async function removeCan(can) {
     var label = can.brand + ' ' + can.flavor;
     if (!window.confirm('Удалить банку «' + label + '» из коллекции?')) return;
-
-    var finish = function () {
-      if (can.imageUrl) URL.revokeObjectURL(can.imageUrl);
-      if (state.ratings[can.id]) {
-        delete state.ratings[can.id];
-        saveRatings();
-      }
-      if (can.isUser) {
-        userCans = userCans.filter(function (c) { return c.id !== can.id; });
-      } else {
-        state.hiddenIds.push(can.id);
-        saveHidden();
-      }
-      closeAllPanels();
-      populateFilters();
-      renderGrid(false);
-    };
-
-    if (can.isUser && db) {
-      dbDelete(db, can.id).then(finish, finish);
-    } else {
-      finish();
+    try {
+      await api('DELETE', '/api/cans/' + encodeURIComponent(can.id));
+    } catch (e) {
+      return;
     }
+    cans = cans.filter(function (c) { return c.id !== can.id; });
+    closeAllPanels();
+    populateFilters();
+    renderGrid(false);
   }
 
   els.form.addEventListener('submit', function (e) { e.preventDefault(); });
@@ -619,13 +588,13 @@
     var removeBtn = e.target.closest('.card-remove');
     if (removeBtn) {
       var card = removeBtn.closest('.card');
-      var target = card && byId(card.dataset.id);
+      var target = card && cans.find(function (c) { return c.id === card.dataset.id; });
       if (target) removeCan(target);
       return;
     }
     var cardEl = e.target.closest('.card');
     if (!cardEl) return;
-    var can = byId(cardEl.dataset.id);
+    var can = cans.find(function (c) { return c.id === cardEl.dataset.id; });
     if (can) openDetail(can);
   });
 
@@ -635,7 +604,7 @@
     var card = e.target.closest('.card');
     if (!card) return;
     e.preventDefault();
-    var can = byId(card.dataset.id);
+    var can = cans.find(function (c) { return c.id === card.dataset.id; });
     if (can) openDetail(can);
   });
 
@@ -661,11 +630,7 @@
 
   els.clearRating.addEventListener('click', function () {
     if (!currentCan) return;
-    delete state.ratings[currentCan.id];
-    saveRatings();
-    paintStars(els.stars, 0, 'on');
-    els.clearRating.hidden = true;
-    renderGrid(false);
+    setRating(currentCan, 0);
   });
 
   els.panelClose.addEventListener('click', function () { closeAllPanels(); });
@@ -747,7 +712,7 @@
     });
   });
 
-  els.addForm.addEventListener('submit', function (e) {
+  els.addForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     hideFormError();
 
@@ -764,11 +729,8 @@
     }
 
     var number = parseInt(els.fNumber.value, 10);
-    if (!number || number < 1) number = nextNumber();
-
-    var record = {
-      id: 'user-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
-      number: number,
+    var payload = {
+      number: number >= 1 ? number : null,
       brand: els.fBrand.value.trim(),
       flavor: els.fFlavor.value.trim(),
       country: els.fCountry.value.trim(),
@@ -776,29 +738,21 @@
       date: els.fDate.value || null,
       notes: els.fNotes.value.trim() || null,
       color: els.colorInput.value || '#7C8B99',
-      photo: pendingPhoto ? pendingPhoto.blob : null,
-      createdAt: Date.now(),
-      isUser: true
+      photo: pendingPhoto ? pendingPhoto.dataUrl : null
     };
 
-    var apply = function () {
-      var can = Object.assign({}, record);
-      if (record.photo) {
-        try { can.imageUrl = URL.createObjectURL(record.photo); } catch (e) {}
-      }
-      userCans.push(can);
+    els.saveBtn.disabled = true;
+    try {
+      var created = await api('POST', '/api/cans', payload);
+      cans.push(created);
       resetForm();
       closeAllPanels();
       populateFilters();
       renderGrid(false);
-    };
-
-    if (db) {
-      dbPut(db, record).then(apply, function () {
-        showFormError('Не удалось сохранить банку: хранилище браузера недоступно.');
-      });
-    } else {
-      showFormError('Не удалось сохранить банку: хранилище браузера недоступно.');
+    } catch (err) {
+      showFormError(err.message);
+    } finally {
+      els.saveBtn.disabled = false;
     }
   });
 
@@ -807,10 +761,51 @@
     removeCan(currentCan);
   });
 
-  function init() {
-    populateFilters();
-    renderGrid(true);
+  els.authToggle.addEventListener('click', function () {
+    setAuthMode(authMode === 'login' ? 'register' : 'login');
+  });
+
+  els.authForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    els.authError.hidden = true;
+    els.authSubmit.disabled = true;
+    try {
+      var me = await api('POST', authMode === 'login' ? '/api/login' : '/api/register', {
+        username: els.aUser.value.trim(),
+        password: els.aPass.value
+      });
+      enterApp(me.username);
+      els.authForm.reset();
+      await loadCans(true);
+    } catch (err) {
+      els.authError.textContent = err.message;
+      els.authError.hidden = false;
+    } finally {
+      els.authSubmit.disabled = false;
+    }
+  });
+
+  els.logoutBtn.addEventListener('click', async function () {
+    try {
+      await api('POST', '/api/logout');
+    } catch (e) {}
+    setAuthMode('login');
+    showAuth();
+  });
+
+  async function init() {
+    try {
+      var me = await api('GET', '/api/me');
+      enterApp(me.username);
+      await loadCans(true);
+    } catch (e) {
+      if (e.status === 401) {
+        showAuth();
+      } else {
+        showAuth('Не удалось связаться с сервером. Попробуй обновить страницу позже.');
+      }
+    }
   }
 
-  loadUserCans().then(init, init);
+  init();
 })();

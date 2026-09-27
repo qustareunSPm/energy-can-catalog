@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Каталог банок — личная коллекция энергетиков</title>
+  <script>
+    if (location.hostname.indexOf('github.io') !== -1) {
+      location.replace('https://collectionqusta.duckdns.org/');
+    }
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230E6B5B'/%3E%3Crect x='11.5' y='7' width='9' height='18' rx='3' fill='white'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,6 +16,31 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="auth-screen" id="authScreen" hidden>
+    <form class="auth-card" id="authForm" novalidate>
+      <div class="logo auth-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <rect x="8" y="4.8" width="8" height="14.4" rx="2.6" />
+          <path d="M8 7.6h8" />
+        </svg>
+      </div>
+      <h1 class="auth-title" id="authTitle">Вход</h1>
+      <p class="auth-sub" id="authSub">Войдите, чтобы открыть свою коллекцию</p>
+      <div class="field">
+        <label class="label" for="aUser">Имя пользователя</label>
+        <input type="text" id="aUser" maxlength="32" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label class="label" for="aPass">Пароль</label>
+        <input type="password" id="aPass" maxlength="128" autocomplete="current-password" />
+      </div>
+      <p class="form-error" id="authError" hidden></p>
+      <button type="submit" class="btn-primary" id="authSubmit">Войти</button>
+      <button type="button" class="link-btn" id="authToggle">Создать аккаунт</button>
+    </form>
+  </div>
+
+  <div id="appShell" hidden>
   <header class="topbar">
     <div class="container">
       <div class="logo" aria-hidden="true">
@@ -29,6 +59,10 @@
         </svg>
         Добавить банку
       </button>
+      <div class="user-area">
+        <span class="user-chip" id="userChip" hidden></span>
+        <button class="link-btn" id="logoutBtn" type="button" hidden>Выйти</button>
+      </div>
     </div>
   </header>
 
@@ -68,10 +102,11 @@
         <button class="link-btn" id="resetFilters" type="button">Сбросить фильтры</button>
       </div>
       <footer class="footer">
-        Данные — в файле <code>data.js</code>, фото складываются в папку <code>images/</code>.
+        Коллекция хранится на сервере и доступна только из твоего аккаунта.
       </footer>
     </div>
   </main>
+  </div>
 
   <div class="overlay" id="overlay"></div>
 
@@ -173,7 +208,6 @@
     </div>
   </aside>
 
-  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
