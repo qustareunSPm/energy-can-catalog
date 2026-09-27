@@ -47,6 +47,7 @@
     brandList: document.getElementById('brandList'),
     countryList: document.getElementById('countryList'),
     formError: document.getElementById('formError'),
+    saveBtn: document.getElementById('saveBtn'),
     authScreen: document.getElementById('authScreen'),
     authForm: document.getElementById('authForm'),
     authTitle: document.getElementById('authTitle'),
