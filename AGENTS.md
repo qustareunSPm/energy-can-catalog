@@ -21,8 +21,8 @@
 ## Деплой (VPS)
 
 - **VPS:** Ubuntu 26.04, Docker 29.8.1 + compose v5.5.1. SSH-пользователь `qusta` в группе `docker` — для docker-команд sudo не нужен.
-- **Каталог приложения на VPS:** `~/collection` (server.js, data.js, Dockerfile, docker-compose.yml, public/). Там compose-файл **только с сервисом `app`** (без caddy), подключён к внешней сети `vaultwarden_default`.
-- **Обновление:** залить новые файлы (или git pull, если добавить remote на VPS) → `cd ~/collection && docker compose up -d --build`.
+- **Каталог приложения на VPS:** `~/collection` — git-клон этого репозитория (remote `origin`, ветка `main`). Деплой-файл `docker-compose.prod.yml` (только сервис `app`, без caddy, внешняя сеть `vaultwarden_default`) лежит на VPS локально и в git не входит; `docker-compose.yml` из репозитория на VPS удалён специально, чтобы случайно не поднять второй caddy.
+- **Обновление:** `cd ~/collection && git pull && docker compose -f docker-compose.prod.yml up -d --build`.
 - **Реверс-прокси:** используется **уже существующий Caddy** другого проекта: конфиг `/home/qusta/vaultwarden/Caddyfile`, сайт-блок `collectionqusta.duckdns.org → reverse_proxy collection-app:3000`. После правки конфига: `docker exec caddy caddy reload --config /etc/caddy/Caddyfile`. Сертификаты Let's Encrypt — автоматом.
 - **Соседи по VPS:** vaultwarden, password-bot, 3x-ui — не трогать. Порт 3000 наружу не проброшен, только через Caddy.
 
