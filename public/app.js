@@ -18,7 +18,6 @@
     panelNumber: document.getElementById('panelNumber'),
     panelBrand: document.getElementById('panelBrand'),
     panelTitle: document.getElementById('panelTitle'),
-    metaCountry: document.getElementById('metaCountry'),
     metaDate: document.getElementById('metaDate'),
     metaVolume: document.getElementById('metaVolume'),
     stars: document.getElementById('panelStars'),
@@ -39,12 +38,10 @@
     fNumber: document.getElementById('fNumber'),
     fBrand: document.getElementById('fBrand'),
     fFlavor: document.getElementById('fFlavor'),
-    fCountry: document.getElementById('fCountry'),
     fVolume: document.getElementById('fVolume'),
     fDate: document.getElementById('fDate'),
     fNotes: document.getElementById('fNotes'),
     brandList: document.getElementById('brandList'),
-    countryList: document.getElementById('countryList'),
     formError: document.getElementById('formError'),
     saveBtn: document.getElementById('saveBtn'),
     authScreen: document.getElementById('authScreen'),
@@ -76,7 +73,7 @@
   var openPanelEl = null;
   var authMode = 'login';
 
-  var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
+  var STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
   var X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   var THEME_KEY = 'can-catalog:theme';
   var SUN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
@@ -215,11 +212,9 @@
   function populateFilters() {
     var brands = uniqueSorted(cans.map(function (c) { return c.brand; }));
     var flavors = uniqueSorted(cans.map(function (c) { return c.flavor; }));
-    var countries = uniqueSorted(cans.map(function (c) { return c.country; }));
     fillSelect(els.brand, brands, 'Все бренды');
     fillSelect(els.flavor, flavors, 'Все вкусы');
     fillDatalist(els.brandList, brands);
-    fillDatalist(els.countryList, countries);
   }
 
   var SORTERS = {
@@ -239,7 +234,7 @@
       if (state.brand && c.brand !== state.brand) return false;
       if (state.flavor && c.flavor !== state.flavor) return false;
       if (!q) return true;
-      var hay = [c.brand, c.flavor, c.country, c.notes, c.number].join(' ').toLowerCase();
+      var hay = [c.brand, c.flavor, c.notes, c.number].join(' ').toLowerCase();
       return hay.indexOf(q) !== -1;
     });
     list.sort(SORTERS[state.sort] || SORTERS['number-asc']);
@@ -266,7 +261,6 @@
       '<div class="card-row"><span class="card-number">' + pad(can.number) + '</span>' + miniStars(can.rating) + '</div>' +
       '<h3 class="card-brand">' + esc(can.brand) + '</h3>' +
       '<p class="card-flavor">' + esc(can.flavor) + '</p>' +
-      '<p class="card-country">' + esc(can.country) + '</p>' +
       '</div></article>';
   }
 
@@ -334,7 +328,6 @@
     els.panelNumber.textContent = pad(can.number);
     els.panelBrand.textContent = can.brand;
     els.panelTitle.textContent = can.flavor;
-    els.metaCountry.textContent = can.country || '—';
     els.metaDate.textContent = formatDate(can.date) || '—';
     els.metaVolume.textContent = can.volume || '—';
 
@@ -409,7 +402,7 @@
     els.colorInput.value = '#0E6B5B';
     resetPhotoUi();
     hideFormError();
-    [els.fBrand, els.fFlavor, els.fCountry].forEach(function (inp) {
+    [els.fBrand, els.fFlavor].forEach(function (inp) {
       inp.classList.remove('invalid');
     });
   }
@@ -717,7 +710,7 @@
     resetPhotoUi();
   });
 
-  [els.fBrand, els.fFlavor, els.fCountry].forEach(function (inp) {
+  [els.fBrand, els.fFlavor].forEach(function (inp) {
     inp.addEventListener('input', function () {
       inp.classList.remove('invalid');
       hideFormError();
@@ -728,14 +721,14 @@
     e.preventDefault();
     hideFormError();
 
-    var missing = [els.fBrand, els.fFlavor, els.fCountry].filter(function (inp) {
+    var missing = [els.fBrand, els.fFlavor].filter(function (inp) {
       var ok = inp.value.trim().length > 0;
       inp.classList.toggle('invalid', !ok);
       return !ok;
     });
 
     if (missing.length) {
-      showFormError('Заполните обязательные поля: бренд, вкус и страна.');
+      showFormError('Заполните обязательные поля: бренд и вкус.');
       missing[0].focus();
       return;
     }
@@ -745,7 +738,6 @@
       number: number >= 1 ? number : null,
       brand: els.fBrand.value.trim(),
       flavor: els.fFlavor.value.trim(),
-      country: els.fCountry.value.trim(),
       volume: els.fVolume.value.trim() || null,
       date: els.fDate.value || null,
       notes: els.fNotes.value.trim() || null,

@@ -306,8 +306,8 @@ async function handleApi(req, res, pathname) {
     const brand = String(body.brand || '').trim().slice(0, 200);
     const flavor = String(body.flavor || '').trim().slice(0, 200);
     const country = String(body.country || '').trim().slice(0, 200);
-    if (!brand || !flavor || !country) {
-      return json(res, 400, { error: 'Заполните бренд, вкус и страну' });
+    if (!brand || !flavor) {
+      return json(res, 400, { error: 'Заполните бренд и вкус' });
     }
     let number = Number(body.number);
     if (!Number.isInteger(number) || number < 1 || number > 999999) number = nextNumberForUser(me.id);

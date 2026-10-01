@@ -83,7 +83,7 @@
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
         </svg>
-        <input id="searchInput" type="search" placeholder="Поиск: бренд, вкус, страна…" aria-label="Поиск по коллекции" />
+        <input id="searchInput" type="search" placeholder="Поиск: бренд, вкус…" aria-label="Поиск по коллекции" />
       </label>
       <select class="select" id="filterBrand" aria-label="Фильтр по бренду">
         <option value="">Все бренды</option>
@@ -131,7 +131,6 @@
         <h2 class="panel-title" id="panelTitle"></h2>
       </header>
       <dl class="meta">
-        <div class="meta-row"><dt>Страна</dt><dd id="metaCountry"></dd></div>
         <div class="meta-row"><dt>Дата пробы</dt><dd id="metaDate"></dd></div>
         <div class="meta-row"><dt>Объём</dt><dd id="metaVolume"></dd></div>
       </dl>
@@ -191,11 +190,6 @@
         <div class="field">
           <label class="label" for="fFlavor">Вкус *</label>
           <input type="text" id="fFlavor" maxlength="80" />
-        </div>
-        <div class="field">
-          <label class="label" for="fCountry">Страна *</label>
-          <input type="text" id="fCountry" list="countryList" maxlength="60" />
-          <datalist id="countryList"></datalist>
         </div>
         <div class="field">
           <label class="label" for="fVolume">Объём</label>
