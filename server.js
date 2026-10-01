@@ -356,6 +356,49 @@ async function handleApi(req, res, pathname) {
   }
 
   m = /^\/api\/cans\/([^/]+)$/.exec(pathname);
+  if (method === 'PATCH' && m) {
+    const me = getUserFromReq(req);
+    if (!me) return json(res, 401, { error: 'Требуется вход' });
+    const canId = decodeURIComponent(m[1]);
+    const existing = getCanRow(me.id, canId);
+    if (!existing) return json(res, 404, { error: 'Банка не найдена' });
+
+    const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+    const updates = [];
+    const params = [];
+
+    if (body.notes !== undefined) {
+      const notes = body.notes ? String(body.notes).slice(0, 4000) : null;
+      updates.push('notes = ?');
+      params.push(notes);
+    }
+
+    if (body.photo !== undefined) {
+      if (body.photo === null || body.photo === '') {
+        updates.push('photo = NULL, photo_mime = NULL');
+      } else {
+        const parsed = parsePhotoDataUrl(body.photo);
+        if (parsed.error) return json(res, 400, { error: parsed.error });
+        updates.push('photo = ?, photo_mime = ?');
+        params.push(parsed.buffer, parsed.mime);
+      }
+    }
+
+    if (body.color !== undefined && body.color) {
+      if (/^#[0-9a-fA-F]{3,8}$/.test(String(body.color))) {
+        updates.push('color = ?');
+        params.push(String(body.color));
+      }
+    }
+
+    if (updates.length > 0) {
+      params.push(me.id, canId);
+      db.prepare(`UPDATE cans SET ${updates.join(', ')} WHERE user_id = ? AND id = ?`).run(...params);
+    }
+
+    return json(res, 200, clientCan(getCanRow(me.id, canId)));
+  }
+
   if (method === 'DELETE' && m) {
     const me = getUserFromReq(req);
     if (!me) return json(res, 401, { error: 'Требуется вход' });

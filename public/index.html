@@ -123,7 +123,20 @@
         <path d="M6 6l12 12M18 6L6 18" />
       </svg>
     </button>
-    <div class="panel-media" id="panelMedia"></div>
+    <div class="panel-media-wrap">
+      <div class="panel-media" id="panelMedia"></div>
+      <div class="panel-media-actions" id="panelMediaActions">
+        <button type="button" class="btn-media-action" id="panelPhotoBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span id="panelPhotoBtnText">Добавить фото</span>
+        </button>
+        <button type="button" class="btn-media-action danger" id="panelPhotoRemove" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:13px;height:13px"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          Убрать
+        </button>
+      </div>
+      <input type="file" id="panelPhotoInput" accept="image/*" hidden />
+    </div>
     <div class="panel-body">
       <header>
         <p class="panel-number" id="panelNumber"></p>
@@ -140,8 +153,18 @@
         <button class="link-btn clear-btn" id="clearRating" type="button" hidden>Сбросить оценку</button>
       </section>
       <section>
-        <h3 class="label">Заметки</h3>
+        <div class="section-head">
+          <h3 class="label">Заметки</h3>
+          <button class="link-btn" id="editNotesBtn" type="button">Редактировать</button>
+        </div>
         <p class="notes" id="panelNotes"></p>
+        <div class="notes-edit-box" id="notesEditBox" hidden>
+          <textarea id="notesInput" rows="4" maxlength="2000" placeholder="Напишите заметку о вкусе, впечатлениях…"></textarea>
+          <div class="notes-edit-actions">
+            <button type="button" class="btn-primary btn-sm" id="saveNotesBtn">Сохранить</button>
+            <button type="button" class="link-btn" id="cancelNotesBtn">Отмена</button>
+          </div>
+        </div>
       </section>
       <section>
         <button class="link-btn danger" id="deleteCan" type="button" hidden>Удалить банку из коллекции</button>

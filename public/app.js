@@ -23,6 +23,15 @@
     stars: document.getElementById('panelStars'),
     clearRating: document.getElementById('clearRating'),
     panelNotes: document.getElementById('panelNotes'),
+    panelPhotoBtn: document.getElementById('panelPhotoBtn'),
+    panelPhotoBtnText: document.getElementById('panelPhotoBtnText'),
+    panelPhotoRemove: document.getElementById('panelPhotoRemove'),
+    panelPhotoInput: document.getElementById('panelPhotoInput'),
+    editNotesBtn: document.getElementById('editNotesBtn'),
+    notesEditBox: document.getElementById('notesEditBox'),
+    notesInput: document.getElementById('notesInput'),
+    saveNotesBtn: document.getElementById('saveNotesBtn'),
+    cancelNotesBtn: document.getElementById('cancelNotesBtn'),
     deleteCan: document.getElementById('deleteCan'),
     addCanBtn: document.getElementById('addCanBtn'),
     formPanel: document.getElementById('formPanel'),
@@ -333,14 +342,23 @@
 
     renderStars(can.rating || 0);
     els.clearRating.hidden = !can.rating;
-    els.deleteCan.hidden = false;
+    if (can.photoUrl) {
+      els.panelPhotoBtnText.textContent = 'Сменить фото';
+      els.panelPhotoRemove.hidden = false;
+    } else {
+      els.panelPhotoBtnText.textContent = 'Добавить фото';
+      els.panelPhotoRemove.hidden = true;
+    }
 
+    closeNotesEditor();
     if (can.notes) {
       els.panelNotes.textContent = can.notes;
       els.panelNotes.classList.remove('is-empty');
+      els.editNotesBtn.textContent = 'Изменить';
     } else {
       els.panelNotes.textContent = 'Заметок пока нет.';
       els.panelNotes.classList.add('is-empty');
+      els.editNotesBtn.textContent = 'Добавить';
     }
 
     els.overlay.classList.add('show');
@@ -352,7 +370,10 @@
 
   function closePanelEl(panel, restoreFocus) {
     panel.classList.remove('open');
-    if (panel === els.panel) currentCan = null;
+    if (panel === els.panel) {
+      currentCan = null;
+      closeNotesEditor();
+    }
     if (openPanelEl === panel) openPanelEl = null;
     if (!els.panel.classList.contains('open') && !els.formPanel.classList.contains('open')) {
       els.overlay.classList.remove('show');
@@ -636,6 +657,122 @@
   els.clearRating.addEventListener('click', function () {
     if (!currentCan) return;
     setRating(currentCan, 0);
+  });
+
+  function openNotesEditor() {
+    if (!currentCan) return;
+    els.notesInput.value = currentCan.notes || '';
+    els.panelNotes.hidden = true;
+    els.notesEditBox.hidden = false;
+    els.editNotesBtn.hidden = true;
+    els.notesInput.focus();
+  }
+
+  function closeNotesEditor() {
+    els.notesEditBox.hidden = true;
+    els.panelNotes.hidden = false;
+    els.editNotesBtn.hidden = false;
+  }
+
+  els.editNotesBtn.addEventListener('click', openNotesEditor);
+  els.panelNotes.addEventListener('click', function () {
+    if (currentCan && !currentCan.notes) openNotesEditor();
+  });
+  els.cancelNotesBtn.addEventListener('click', closeNotesEditor);
+
+  els.saveNotesBtn.addEventListener('click', async function () {
+    if (!currentCan) return;
+    var newNotes = els.notesInput.value.trim() || null;
+    els.saveNotesBtn.disabled = true;
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { notes: newNotes });
+      currentCan.notes = updated.notes;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].notes = updated.notes;
+          break;
+        }
+      }
+      if (currentCan.notes) {
+        els.panelNotes.textContent = currentCan.notes;
+        els.panelNotes.classList.remove('is-empty');
+        els.editNotesBtn.textContent = 'Изменить';
+      } else {
+        els.panelNotes.textContent = 'Заметок пока нет.';
+        els.panelNotes.classList.add('is-empty');
+        els.editNotesBtn.textContent = 'Добавить';
+      }
+      closeNotesEditor();
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка сохранения заметки');
+    } finally {
+      els.saveNotesBtn.disabled = false;
+    }
+  });
+
+  els.panelPhotoBtn.addEventListener('click', function () {
+    if (!currentCan) return;
+    els.panelPhotoInput.click();
+  });
+
+  els.panelPhotoInput.addEventListener('change', async function () {
+    var file = els.panelPhotoInput.files && els.panelPhotoInput.files[0];
+    els.panelPhotoInput.value = '';
+    if (!file || !currentCan) return;
+
+    var oldText = els.panelPhotoBtnText.textContent;
+    els.panelPhotoBtnText.textContent = 'Загрузка…';
+    els.panelPhotoBtn.disabled = true;
+    try {
+      var processed = await processPhoto(file);
+      if (!processed) {
+        alert('Не удалось обработать фото');
+        return;
+      }
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { photo: processed.dataUrl });
+      var cacheBustUrl = updated.photoUrl ? updated.photoUrl + '?t=' + Date.now() : null;
+      currentCan.photoUrl = cacheBustUrl;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].photoUrl = cacheBustUrl;
+          break;
+        }
+      }
+      els.panelMedia.innerHTML = mediaHtml(currentCan);
+      els.panelPhotoBtnText.textContent = 'Сменить фото';
+      els.panelPhotoRemove.hidden = false;
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка загрузки фото');
+      els.panelPhotoBtnText.textContent = oldText;
+    } finally {
+      els.panelPhotoBtn.disabled = false;
+    }
+  });
+
+  els.panelPhotoRemove.addEventListener('click', async function () {
+    if (!currentCan) return;
+    if (!confirm('Удалить фото этой банки?')) return;
+    els.panelPhotoRemove.disabled = true;
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { photo: null });
+      currentCan.photoUrl = null;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].photoUrl = null;
+          break;
+        }
+      }
+      els.panelMedia.innerHTML = mediaHtml(currentCan);
+      els.panelPhotoBtnText.textContent = 'Добавить фото';
+      els.panelPhotoRemove.hidden = true;
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка удаления фото');
+    } finally {
+      els.panelPhotoRemove.disabled = false;
+    }
   });
 
   els.panelClose.addEventListener('click', function () { closeAllPanels(); });
