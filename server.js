@@ -384,10 +384,23 @@ async function handleApi(req, res, pathname) {
       }
     }
 
-    if (body.color !== undefined && body.color) {
-      if (/^#[0-9a-fA-F]{3,8}$/.test(String(body.color))) {
+    if (body.volume !== undefined) {
+      const volume = body.volume ? String(body.volume).trim().slice(0, 60) : null;
+      updates.push('volume = ?');
+      params.push(volume);
+    }
+
+    if (body.date !== undefined) {
+      const date = body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)) ? String(body.date) : null;
+      updates.push('date = ?');
+      params.push(date);
+    }
+
+    if (body.color !== undefined) {
+      const color = body.color && /^#[0-9a-fA-F]{3,8}$/.test(String(body.color)) ? String(body.color) : null;
+      if (color) {
         updates.push('color = ?');
-        params.push(String(body.color));
+        params.push(color);
       }
     }
 

@@ -18,8 +18,22 @@
     panelNumber: document.getElementById('panelNumber'),
     panelBrand: document.getElementById('panelBrand'),
     panelTitle: document.getElementById('panelTitle'),
+    panelColorWrap: document.getElementById('panelColorWrap'),
+    panelColorInput: document.getElementById('panelColorInput'),
     metaDate: document.getElementById('metaDate'),
+    metaDateVal: document.getElementById('metaDateVal'),
+    editDateBtn: document.getElementById('editDateBtn'),
+    dateEditForm: document.getElementById('dateEditForm'),
+    dateInput: document.getElementById('dateInput'),
+    saveDateBtn: document.getElementById('saveDateBtn'),
+    cancelDateBtn: document.getElementById('cancelDateBtn'),
     metaVolume: document.getElementById('metaVolume'),
+    metaVolumeVal: document.getElementById('metaVolumeVal'),
+    editVolumeBtn: document.getElementById('editVolumeBtn'),
+    volumeEditForm: document.getElementById('volumeEditForm'),
+    volumeInput: document.getElementById('volumeInput'),
+    saveVolumeBtn: document.getElementById('saveVolumeBtn'),
+    cancelVolumeBtn: document.getElementById('cancelVolumeBtn'),
     stars: document.getElementById('panelStars'),
     clearRating: document.getElementById('clearRating'),
     panelNotes: document.getElementById('panelNotes'),
@@ -325,6 +339,13 @@
     paintStars(els.stars, current, 'on');
   }
 
+  function closeMetaEditors() {
+    els.dateEditForm.hidden = true;
+    els.metaDateVal.hidden = false;
+    els.volumeEditForm.hidden = true;
+    els.metaVolumeVal.hidden = false;
+  }
+
   function openDetail(can) {
     if (openPanelEl && openPanelEl !== els.panel) closePanelEl(openPanelEl, false);
     currentCan = can;
@@ -345,12 +366,16 @@
     if (can.photoUrl) {
       els.panelPhotoBtnText.textContent = 'Сменить фото';
       els.panelPhotoRemove.hidden = false;
+      els.panelColorWrap.hidden = true;
     } else {
       els.panelPhotoBtnText.textContent = 'Добавить фото';
       els.panelPhotoRemove.hidden = true;
+      els.panelColorWrap.hidden = false;
+      els.panelColorInput.value = can.color || '#0E6B5B';
     }
 
     closeNotesEditor();
+    closeMetaEditors();
     if (can.notes) {
       els.panelNotes.textContent = can.notes;
       els.panelNotes.classList.remove('is-empty');
@@ -373,6 +398,7 @@
     if (panel === els.panel) {
       currentCan = null;
       closeNotesEditor();
+      closeMetaEditors();
     }
     if (openPanelEl === panel) openPanelEl = null;
     if (!els.panel.classList.contains('open') && !els.formPanel.classList.contains('open')) {
@@ -742,6 +768,7 @@
       els.panelMedia.innerHTML = mediaHtml(currentCan);
       els.panelPhotoBtnText.textContent = 'Сменить фото';
       els.panelPhotoRemove.hidden = false;
+      els.panelColorWrap.hidden = true;
       renderGrid(false);
     } catch (err) {
       alert(err.message || 'Ошибка загрузки фото');
@@ -767,11 +794,106 @@
       els.panelMedia.innerHTML = mediaHtml(currentCan);
       els.panelPhotoBtnText.textContent = 'Добавить фото';
       els.panelPhotoRemove.hidden = true;
+      els.panelColorWrap.hidden = false;
+      els.panelColorInput.value = currentCan.color || '#0E6B5B';
       renderGrid(false);
     } catch (err) {
       alert(err.message || 'Ошибка удаления фото');
     } finally {
       els.panelPhotoRemove.disabled = false;
+    }
+  });
+
+  els.panelColorInput.addEventListener('change', async function () {
+    if (!currentCan) return;
+    var newColor = els.panelColorInput.value;
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { color: newColor });
+      currentCan.color = updated.color || newColor;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].color = currentCan.color;
+          break;
+        }
+      }
+      els.panelMedia.innerHTML = mediaHtml(currentCan);
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка изменения цвета заглушки');
+    }
+  });
+
+  els.editDateBtn.addEventListener('click', function () {
+    if (!currentCan) return;
+    els.dateInput.value = currentCan.date || '';
+    els.metaDateVal.hidden = true;
+    els.dateEditForm.hidden = false;
+    els.dateInput.focus();
+  });
+
+  els.cancelDateBtn.addEventListener('click', function () {
+    els.dateEditForm.hidden = true;
+    els.metaDateVal.hidden = false;
+  });
+
+  els.saveDateBtn.addEventListener('click', async function () {
+    if (!currentCan) return;
+    var newDate = els.dateInput.value || null;
+    els.saveDateBtn.disabled = true;
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { date: newDate });
+      currentCan.date = updated.date;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].date = updated.date;
+          break;
+        }
+      }
+      els.metaDate.textContent = formatDate(currentCan.date) || '—';
+      els.dateEditForm.hidden = true;
+      els.metaDateVal.hidden = false;
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка сохранения даты');
+    } finally {
+      els.saveDateBtn.disabled = false;
+    }
+  });
+
+  els.editVolumeBtn.addEventListener('click', function () {
+    if (!currentCan) return;
+    els.volumeInput.value = currentCan.volume || '';
+    els.metaVolumeVal.hidden = true;
+    els.volumeEditForm.hidden = false;
+    els.volumeInput.focus();
+  });
+
+  els.cancelVolumeBtn.addEventListener('click', function () {
+    els.volumeEditForm.hidden = true;
+    els.metaVolumeVal.hidden = false;
+  });
+
+  els.saveVolumeBtn.addEventListener('click', async function () {
+    if (!currentCan) return;
+    var newVolume = els.volumeInput.value.trim() || null;
+    els.saveVolumeBtn.disabled = true;
+    try {
+      var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { volume: newVolume });
+      currentCan.volume = updated.volume;
+      for (var i = 0; i < cans.length; i++) {
+        if (cans[i].id === currentCan.id) {
+          cans[i].volume = updated.volume;
+          break;
+        }
+      }
+      els.metaVolume.textContent = currentCan.volume || '—';
+      els.volumeEditForm.hidden = true;
+      els.metaVolumeVal.hidden = false;
+      renderGrid(false);
+    } catch (err) {
+      alert(err.message || 'Ошибка сохранения объёма');
+    } finally {
+      els.saveVolumeBtn.disabled = false;
     }
   });
 

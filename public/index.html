@@ -126,6 +126,10 @@
     <div class="panel-media-wrap">
       <div class="panel-media" id="panelMedia"></div>
       <div class="panel-media-actions" id="panelMediaActions">
+        <label class="btn-media-action btn-color-action" id="panelColorWrap" title="Сменить цвет банки-заглушки">
+          <input type="color" id="panelColorInput" aria-label="Сменить цвет заглушки" />
+          <span>Цвет</span>
+        </label>
         <button type="button" class="btn-media-action" id="panelPhotoBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span id="panelPhotoBtnText">Добавить фото</span>
@@ -144,8 +148,38 @@
         <h2 class="panel-title" id="panelTitle"></h2>
       </header>
       <dl class="meta">
-        <div class="meta-row"><dt>Дата пробы</dt><dd id="metaDate"></dd></div>
-        <div class="meta-row"><dt>Объём</dt><dd id="metaVolume"></dd></div>
+        <div class="meta-row meta-row-editable" id="metaDateRow">
+          <dt>Дата пробы</dt>
+          <dd>
+            <div class="meta-val" id="metaDateVal">
+              <span id="metaDate"></span>
+              <button type="button" class="meta-edit-btn" id="editDateBtn" aria-label="Изменить дату пробы">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+            </div>
+            <div class="meta-edit-form" id="dateEditForm" hidden>
+              <input type="date" id="dateInput" />
+              <button type="button" class="btn-primary btn-xs" id="saveDateBtn">ОК</button>
+              <button type="button" class="link-btn meta-cancel-btn" id="cancelDateBtn">✕</button>
+            </div>
+          </dd>
+        </div>
+        <div class="meta-row meta-row-editable" id="metaVolumeRow">
+          <dt>Объём</dt>
+          <dd>
+            <div class="meta-val" id="metaVolumeVal">
+              <span id="metaVolume"></span>
+              <button type="button" class="meta-edit-btn" id="editVolumeBtn" aria-label="Изменить объём">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+            </div>
+            <div class="meta-edit-form" id="volumeEditForm" hidden>
+              <input type="text" id="volumeInput" maxlength="30" placeholder="500 мл" />
+              <button type="button" class="btn-primary btn-xs" id="saveVolumeBtn">ОК</button>
+              <button type="button" class="link-btn meta-cancel-btn" id="cancelVolumeBtn">✕</button>
+            </div>
+          </dd>
+        </div>
       </dl>
       <section>
         <h3 class="label">Оценка</h3>
