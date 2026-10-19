@@ -925,7 +925,8 @@
 
   els.editVolumeBtn.addEventListener('click', function () {
     if (!currentCan) return;
-    els.volumeInput.value = currentCan.volume || '';
+    var num = currentCan.volume ? parseInt(String(currentCan.volume).replace(/\D+/g, ''), 10) : '';
+    els.volumeInput.value = Number.isFinite(num) && num > 0 ? num : '';
     els.metaVolumeVal.hidden = true;
     els.volumeEditForm.hidden = false;
     els.volumeInput.focus();
@@ -938,7 +939,9 @@
 
   els.saveVolumeBtn.addEventListener('click', async function () {
     if (!currentCan) return;
-    var newVolume = els.volumeInput.value.trim() || null;
+    var raw = els.volumeInput.value.trim();
+    var num = raw ? parseInt(raw, 10) : null;
+    var newVolume = Number.isFinite(num) && num > 0 ? num : null;
     els.saveVolumeBtn.disabled = true;
     try {
       var updated = await api('PATCH', '/api/cans/' + encodeURIComponent(currentCan.id), { volume: newVolume });
@@ -1079,11 +1082,13 @@
     }
 
     var number = parseInt(els.fNumber.value, 10);
+    var rawVol = els.fVolume.value.trim();
+    var numVol = rawVol ? parseInt(rawVol, 10) : null;
     var payload = {
       number: number >= 1 ? number : null,
       brand: els.fBrand.value.trim(),
       flavor: els.fFlavor.value.trim(),
-      volume: els.fVolume.value.trim() || null,
+      volume: Number.isFinite(numVol) && numVol > 0 ? numVol : null,
       date: els.fDate.value || null,
       notes: els.fNotes.value.trim() || null,
       color: els.colorInput.value || '#7C8B99',

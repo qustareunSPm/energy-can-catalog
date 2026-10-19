@@ -229,6 +229,13 @@ function parsePhotoDataUrl(dataUrl) {
   return { mime: m[1].toLowerCase(), buffer: buf };
 }
 
+function parseVolumeMl(val) {
+  if (val === undefined || val === null || val === '') return null;
+  const num = typeof val === 'number' ? val : parseInt(String(val).replace(/\s*(?:мл|ml)\b/i, '').trim(), 10);
+  if (!Number.isFinite(num) || num <= 0 || num > 10000) return null;
+  return `${Math.round(num)} мл`;
+}
+
 async function handleApi(req, res, pathname) {
   const method = req.method;
 
@@ -329,7 +336,7 @@ async function handleApi(req, res, pathname) {
       brand,
       flavor,
       country,
-      body.volume ? String(body.volume).trim().slice(0, 60) || null : null,
+      parseVolumeMl(body.volume),
       body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)) ? String(body.date) : null,
       body.notes ? String(body.notes).slice(0, 4000) || null : null,
       body.color && /^#[0-9a-fA-F]{3,8}$/.test(String(body.color)) ? String(body.color) : null,
@@ -385,7 +392,7 @@ async function handleApi(req, res, pathname) {
     }
 
     if (body.volume !== undefined) {
-      const volume = body.volume ? String(body.volume).trim().slice(0, 60) : null;
+      const volume = parseVolumeMl(body.volume);
       updates.push('volume = ?');
       params.push(volume);
     }

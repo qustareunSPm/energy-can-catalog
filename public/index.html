@@ -175,7 +175,10 @@
               </button>
             </div>
             <div class="meta-edit-form" id="volumeEditForm" hidden>
-              <input type="text" id="volumeInput" maxlength="30" placeholder="500 мл" />
+              <div class="input-unit-wrap">
+                <input type="number" id="volumeInput" min="1" max="10000" step="1" inputmode="numeric" placeholder="500" />
+                <span class="input-unit">мл</span>
+              </div>
               <button type="button" class="btn-primary btn-xs" id="saveVolumeBtn">ОК</button>
               <button type="button" class="link-btn meta-cancel-btn" id="cancelVolumeBtn">✕</button>
             </div>
@@ -258,8 +261,11 @@
           <input type="text" id="fFlavor" maxlength="80" />
         </div>
         <div class="field">
-          <label class="label" for="fVolume">Объём</label>
-          <input type="text" id="fVolume" maxlength="30" placeholder="500 мл" />
+          <label class="label" for="fVolume">Объём (мл)</label>
+          <div class="input-unit-wrap field-unit-wrap">
+            <input type="number" id="fVolume" min="1" max="10000" step="1" inputmode="numeric" placeholder="500" />
+            <span class="input-unit">мл</span>
+          </div>
         </div>
         <div class="field">
           <label class="label" for="fDate">Дата пробы</label>
