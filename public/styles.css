@@ -274,7 +274,7 @@ input[type="search"]:focus,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 22px;
+  padding: 10px;
   background: var(--media-bg);
   border-bottom: 1px solid var(--line);
   overflow: hidden;
@@ -282,14 +282,15 @@ input[type="search"]:focus,
 }
 
 .card-media svg {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: 94%;
+  max-width: 90%;
   display: block;
 }
 
 .card-media img {
-  height: 82.5%;
-  max-width: 44%;
+  height: 94%;
+  max-width: 88%;
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 12px var(--can-shadow));
@@ -544,8 +545,8 @@ input[type="search"]:focus,
 }
 
 .panel-media img {
-  max-width: 80%;
-  max-height: 85%;
+  max-width: 90%;
+  max-height: 92%;
   width: auto;
   height: auto;
   object-fit: contain;

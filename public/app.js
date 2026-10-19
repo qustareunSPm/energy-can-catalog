@@ -468,6 +468,45 @@
     });
   }
 
+  function trimTransparent(canvas) {
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    var imgData = ctx.getImageData(0, 0, w, h);
+    var data = imgData.data;
+    var top = -1, bottom = -1, left = -1, right = -1;
+
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var a = data[(y * w + x) * 4 + 3];
+        if (a > 12) {
+          if (top === -1) top = y;
+          bottom = y;
+          if (left === -1 || x < left) left = x;
+          if (right === -1 || x > right) right = x;
+        }
+      }
+    }
+
+    // If completely transparent or invalid, return original canvas
+    if (top === -1 || bottom === -1 || left === -1 || right === -1) {
+      return canvas;
+    }
+
+    var cropW = right - left + 1;
+    var cropH = bottom - top + 1;
+    if (cropW <= 0 || cropH <= 0 || (cropW === w && cropH === h)) {
+      return canvas;
+    }
+
+    var trimmed = document.createElement('canvas');
+    trimmed.width = cropW;
+    trimmed.height = cropH;
+    var tCtx = trimmed.getContext('2d');
+    tCtx.drawImage(canvas, left, top, cropW, cropH, 0, 0, cropW, cropH);
+    return trimmed;
+  }
+
   function processPhoto(file) {
     return new Promise(function (resolve) {
       if (!file || !/^image\//.test(file.type)) {
@@ -478,25 +517,35 @@
       var img = new Image();
       img.onload = async function () {
         URL.revokeObjectURL(url);
-        var w = img.naturalWidth;
-        var h = img.naturalHeight;
-        var keepSize = 1.5 * 1024 * 1024;
-        var blob;
-        if (w <= 1600 && h <= 1600 && file.size <= keepSize) {
-          blob = file;
-        } else {
-          var scale = Math.min(1, 1600 / Math.max(w, h));
-          var canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(w * scale));
-          canvas.height = Math.max(1, Math.round(h * scale));
-          var ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          blob = await new Promise(function (res2) {
-            canvas.toBlob(res2, 'image/jpeg', 0.85);
-          }) || file;
+        var origW = img.naturalWidth;
+        var origH = img.naturalHeight;
+        var canvas = document.createElement('canvas');
+        canvas.width = origW;
+        canvas.height = origH;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // Auto-trim transparent edges
+        var trimmed = trimTransparent(canvas);
+        var tw = trimmed.width;
+        var th = trimmed.height;
+
+        // Scale if exceeds 1600px
+        var scale = Math.min(1, 1600 / Math.max(tw, th));
+        var outCanvas = trimmed;
+        if (scale < 1) {
+          outCanvas = document.createElement('canvas');
+          outCanvas.width = Math.max(1, Math.round(tw * scale));
+          outCanvas.height = Math.max(1, Math.round(th * scale));
+          var outCtx = outCanvas.getContext('2d');
+          outCtx.drawImage(trimmed, 0, 0, outCanvas.width, outCanvas.height);
         }
+
+        var blob = await new Promise(function (res2) {
+          outCanvas.toBlob(res2, 'image/png');
+        });
+        if (!blob) blob = file;
+
         try {
           var dataUrl = await blobToDataUrl(blob);
           resolve({ blob: blob, url: URL.createObjectURL(blob), dataUrl: dataUrl });
