@@ -92,8 +92,8 @@
         <option value="">Все вкусы</option>
       </select>
       <select class="select" id="sortBy" aria-label="Сортировка">
-        <option value="number-asc">По номеру (сначала старые)</option>
-        <option value="number-desc">По номеру (сначала новые)</option>
+        <option value="number-desc">Сначала новые</option>
+        <option value="number-asc">Сначала старые</option>
         <option value="rating-desc">По рейтингу</option>
         <option value="brand-asc">По бренду А–Я</option>
       </select>
@@ -132,7 +132,11 @@
         </label>
         <button type="button" class="btn-media-action" id="panelPhotoBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span id="panelPhotoBtnText">Добавить фото</span>
+          <span id="panelPhotoBtnText">Фото</span>
+        </button>
+        <button type="button" class="btn-media-action" id="panelCameraBtn" title="Сделать фото с камеры">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span>Снять</span>
         </button>
         <button type="button" class="btn-media-action danger" id="panelPhotoRemove" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:13px;height:13px"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -140,10 +144,10 @@
         </button>
       </div>
       <input type="file" id="panelPhotoInput" accept="image/*" hidden />
+      <input type="file" id="panelCameraInput" accept="image/*" capture="environment" hidden />
     </div>
     <div class="panel-body">
       <header>
-        <p class="panel-number" id="panelNumber"></p>
         <p class="panel-eyebrow" id="panelBrand"></p>
         <h2 class="panel-title" id="panelTitle"></h2>
       </header>
@@ -225,20 +229,28 @@
               <path d="M12 16V4m0 0 4 4m-4-4L8 8" />
               <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
             </svg>
-            <p>Перетащи фото сюда<br />или нажми, чтобы выбрать файл</p>
+            <p>Перетащи фото сюда или выбери способ загрузки</p>
+            <div class="dz-buttons">
+              <button type="button" class="btn-media-action dz-pick-btn" id="dzPickBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Выбрать файл
+              </button>
+              <button type="button" class="btn-media-action dz-camera-btn" id="dzCameraBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:14px;height:14px"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                Снять на камеру
+              </button>
+            </div>
           </div>
           <button type="button" class="dz-remove" id="photoRemove" hidden>Убрать фото</button>
         </div>
         <input type="file" id="photoInput" accept="image/*" hidden />
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden />
 
         <div class="field" id="colorField">
           <label class="label" for="colorInput">Цвет банки-заглушки</label>
           <input type="color" id="colorInput" value="#0E6B5B" />
         </div>
-        <div class="field">
-          <label class="label" for="fNumber">Каталожный номер</label>
-          <input type="number" id="fNumber" min="1" step="1" inputmode="numeric" />
-        </div>
+        <input type="hidden" id="fNumber" />
         <div class="field">
           <label class="label" for="fBrand">Бренд *</label>
           <input type="text" id="fBrand" list="brandList" maxlength="60" />

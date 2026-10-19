@@ -309,7 +309,6 @@ input[type="search"]:focus,
 .card-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   min-height: 14px;
 }
@@ -951,6 +950,20 @@ input[type="search"]:focus,
   width: 26px;
   height: 26px;
   color: var(--ink-3);
+}
+
+.dz-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.dz-buttons .btn-media-action {
+  font-size: 12px;
+  padding: 5px 12px;
 }
 
 .dz-remove {

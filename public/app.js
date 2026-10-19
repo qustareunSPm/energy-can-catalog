@@ -15,7 +15,6 @@
     panel: document.getElementById('panel'),
     panelClose: document.getElementById('panelClose'),
     panelMedia: document.getElementById('panelMedia'),
-    panelNumber: document.getElementById('panelNumber'),
     panelBrand: document.getElementById('panelBrand'),
     panelTitle: document.getElementById('panelTitle'),
     panelColorWrap: document.getElementById('panelColorWrap'),
@@ -39,8 +38,10 @@
     panelNotes: document.getElementById('panelNotes'),
     panelPhotoBtn: document.getElementById('panelPhotoBtn'),
     panelPhotoBtnText: document.getElementById('panelPhotoBtnText'),
+    panelCameraBtn: document.getElementById('panelCameraBtn'),
     panelPhotoRemove: document.getElementById('panelPhotoRemove'),
     panelPhotoInput: document.getElementById('panelPhotoInput'),
+    panelCameraInput: document.getElementById('panelCameraInput'),
     editNotesBtn: document.getElementById('editNotesBtn'),
     notesEditBox: document.getElementById('notesEditBox'),
     notesInput: document.getElementById('notesInput'),
@@ -52,7 +53,10 @@
     formClose: document.getElementById('formClose'),
     addForm: document.getElementById('addForm'),
     dropzone: document.getElementById('dropzone'),
+    dzPickBtn: document.getElementById('dzPickBtn'),
+    dzCameraBtn: document.getElementById('dzCameraBtn'),
     photoInput: document.getElementById('photoInput'),
+    cameraInput: document.getElementById('cameraInput'),
     photoPreview: document.getElementById('photoPreview'),
     dzEmpty: document.getElementById('dzEmpty'),
     photoRemove: document.getElementById('photoRemove'),
@@ -86,7 +90,7 @@
     search: '',
     brand: '',
     flavor: '',
-    sort: 'number-asc'
+    sort: 'number-desc'
   };
 
   var cans = [];
@@ -274,6 +278,8 @@
   }
 
   function cardHtml(can, i, withAppear) {
+    var stars = miniStars(can.rating);
+    var rowHtml = stars ? '<div class="card-row">' + stars + '</div>' : '';
     return '<article class="card' + (withAppear ? ' appear' : '') + '"' +
       (withAppear ? ' style="--i:' + i + '"' : '') +
       ' data-id="' + esc(can.id) + '" tabindex="0" role="button"' +
@@ -281,7 +287,7 @@
       '<button class="card-remove" type="button" aria-label="Удалить банку ' + esc(can.brand + ' ' + can.flavor) + '">' + X_SVG + '</button>' +
       '<div class="card-media">' + mediaHtml(can) + '</div>' +
       '<div class="card-body">' +
-      '<div class="card-row"><span class="card-number">' + pad(can.number) + '</span>' + miniStars(can.rating) + '</div>' +
+      rowHtml +
       '<h3 class="card-brand">' + esc(can.brand) + '</h3>' +
       '<p class="card-flavor">' + esc(can.flavor) + '</p>' +
       '</div></article>';
@@ -355,7 +361,6 @@
     }
 
     els.panelMedia.innerHTML = mediaHtml(can);
-    els.panelNumber.textContent = pad(can.number);
     els.panelBrand.textContent = can.brand;
     els.panelTitle.textContent = can.flavor;
     els.metaDate.textContent = formatDate(can.date) || '—';
@@ -364,11 +369,11 @@
     renderStars(can.rating || 0);
     els.clearRating.hidden = !can.rating;
     if (can.photoUrl) {
-      els.panelPhotoBtnText.textContent = 'Сменить фото';
+      els.panelPhotoBtnText.textContent = 'Фото';
       els.panelPhotoRemove.hidden = false;
       els.panelColorWrap.hidden = true;
     } else {
-      els.panelPhotoBtnText.textContent = 'Добавить фото';
+      els.panelPhotoBtnText.textContent = 'Фото';
       els.panelPhotoRemove.hidden = true;
       els.panelColorWrap.hidden = false;
       els.panelColorInput.value = can.color || '#0E6B5B';
@@ -631,7 +636,7 @@
     state.search = '';
     state.brand = '';
     state.flavor = '';
-    state.sort = 'number-asc';
+    state.sort = 'number-desc';
     els.form.reset();
     renderGrid(false);
   });
@@ -737,19 +742,12 @@
     }
   });
 
-  els.panelPhotoBtn.addEventListener('click', function () {
-    if (!currentCan) return;
-    els.panelPhotoInput.click();
-  });
-
-  els.panelPhotoInput.addEventListener('change', async function () {
-    var file = els.panelPhotoInput.files && els.panelPhotoInput.files[0];
-    els.panelPhotoInput.value = '';
+  async function uploadCanPhoto(file) {
     if (!file || !currentCan) return;
-
     var oldText = els.panelPhotoBtnText.textContent;
     els.panelPhotoBtnText.textContent = 'Загрузка…';
     els.panelPhotoBtn.disabled = true;
+    if (els.panelCameraBtn) els.panelCameraBtn.disabled = true;
     try {
       var processed = await processPhoto(file);
       if (!processed) {
@@ -766,7 +764,7 @@
         }
       }
       els.panelMedia.innerHTML = mediaHtml(currentCan);
-      els.panelPhotoBtnText.textContent = 'Сменить фото';
+      els.panelPhotoBtnText.textContent = 'Фото';
       els.panelPhotoRemove.hidden = false;
       els.panelColorWrap.hidden = true;
       renderGrid(false);
@@ -775,8 +773,35 @@
       els.panelPhotoBtnText.textContent = oldText;
     } finally {
       els.panelPhotoBtn.disabled = false;
+      if (els.panelCameraBtn) els.panelCameraBtn.disabled = false;
     }
+  }
+
+  els.panelPhotoBtn.addEventListener('click', function () {
+    if (!currentCan) return;
+    els.panelPhotoInput.click();
   });
+
+  if (els.panelCameraBtn) {
+    els.panelCameraBtn.addEventListener('click', function () {
+      if (!currentCan) return;
+      els.panelCameraInput.click();
+    });
+  }
+
+  els.panelPhotoInput.addEventListener('change', function () {
+    var file = els.panelPhotoInput.files && els.panelPhotoInput.files[0];
+    els.panelPhotoInput.value = '';
+    uploadCanPhoto(file);
+  });
+
+  if (els.panelCameraInput) {
+    els.panelCameraInput.addEventListener('change', function () {
+      var file = els.panelCameraInput.files && els.panelCameraInput.files[0];
+      els.panelCameraInput.value = '';
+      uploadCanPhoto(file);
+    });
+  }
 
   els.panelPhotoRemove.addEventListener('click', async function () {
     if (!currentCan) return;
@@ -792,7 +817,7 @@
         }
       }
       els.panelMedia.innerHTML = mediaHtml(currentCan);
-      els.panelPhotoBtnText.textContent = 'Добавить фото';
+      els.panelPhotoBtnText.textContent = 'Фото';
       els.panelPhotoRemove.hidden = true;
       els.panelColorWrap.hidden = false;
       els.panelColorInput.value = currentCan.color || '#0E6B5B';
@@ -927,9 +952,24 @@
 
   els.addCanBtn.addEventListener('click', openForm);
 
-  els.dropzone.addEventListener('click', function () {
+  els.dropzone.addEventListener('click', function (e) {
+    if (e.target.closest('#dzPickBtn') || e.target.closest('#dzCameraBtn') || e.target.closest('#photoRemove')) return;
     els.photoInput.click();
   });
+
+  if (els.dzPickBtn) {
+    els.dzPickBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      els.photoInput.click();
+    });
+  }
+
+  if (els.dzCameraBtn) {
+    els.dzCameraBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      els.cameraInput.click();
+    });
+  }
 
   els.dropzone.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -943,6 +983,14 @@
     setPhoto(file);
     els.photoInput.value = '';
   });
+
+  if (els.cameraInput) {
+    els.cameraInput.addEventListener('change', function () {
+      var file = els.cameraInput.files && els.cameraInput.files[0];
+      setPhoto(file);
+      els.cameraInput.value = '';
+    });
+  }
 
   ['dragenter', 'dragover'].forEach(function (type) {
     els.dropzone.addEventListener(type, function (e) {
