@@ -6,7 +6,6 @@
     form: document.getElementById('filters'),
     search: document.getElementById('searchInput'),
     brand: document.getElementById('filterBrand'),
-    flavor: document.getElementById('filterFlavor'),
     sort: document.getElementById('sortBy'),
     grid: document.getElementById('grid'),
     empty: document.getElementById('emptyState'),
@@ -89,7 +88,6 @@
   var state = {
     search: '',
     brand: '',
-    flavor: '',
     sort: 'number-desc'
   };
 
@@ -238,9 +236,7 @@
 
   function populateFilters() {
     var brands = uniqueSorted(cans.map(function (c) { return c.brand; }));
-    var flavors = uniqueSorted(cans.map(function (c) { return c.flavor; }));
     fillSelect(els.brand, brands, 'Все бренды');
-    fillSelect(els.flavor, flavors, 'Все вкусы');
     fillDatalist(els.brandList, brands);
   }
 
@@ -259,7 +255,6 @@
     var q = state.search.trim().toLowerCase();
     var list = cans.filter(function (c) {
       if (state.brand && c.brand !== state.brand) return false;
-      if (state.flavor && c.flavor !== state.flavor) return false;
       if (!q) return true;
       var hay = [c.brand, c.flavor, c.notes, c.number].join(' ').toLowerCase();
       return hay.indexOf(q) !== -1;
@@ -671,11 +666,6 @@
     renderGrid(false);
   });
 
-  els.flavor.addEventListener('change', function () {
-    state.flavor = els.flavor.value;
-    renderGrid(false);
-  });
-
   els.sort.addEventListener('change', function () {
     state.sort = els.sort.value;
     renderGrid(false);
@@ -684,7 +674,6 @@
   els.reset.addEventListener('click', function () {
     state.search = '';
     state.brand = '';
-    state.flavor = '';
     state.sort = 'number-desc';
     els.form.reset();
     renderGrid(false);
